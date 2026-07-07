@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISO ⟶ MTO · Isometric to Material Take-Off</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#060a13;
+    --bg-deep-2:#0a1424;
+    --panel:rgba(255,255,255,0.045);
+    --panel-strong:rgba(255,255,255,0.07);
+    --border:rgba(255,255,255,0.11);
+    --border-strong:rgba(255,255,255,0.24);
+    --cyan:#4fb8d6;
+    --cyan-soft:rgba(79,184,214,0.22);
+    --amber:#e0a458;
+    --amber-soft:rgba(224,164,88,0.22);
+    --violet:#7d7ad1;
+    --violet-soft:rgba(125,122,209,0.22);
+    --green:#4fcb96;
+    --red:#d97a94;
+    --text:#e4eaf3;
+    --text-dim:#8593a8;
+    --text-dimmer:#57657c;
+    --mono:'JetBrains Mono', monospace;
+    --disp:'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--disp);
+    background:var(--bg-deep);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  ::selection{ background:var(--cyan-soft); color:#fff; }
+
+  /* ---------- Ambient background: grid + blobs + grain + cursor glow ---------- */
+  .bg-grid{
+    position:fixed; inset:-10%; z-index:0; pointer-events:none;
+    background-image:
+      repeating-linear-gradient(30deg, rgba(79,184,214,0.035) 0px, rgba(79,184,214,0.035) 1px, transparent 1px, transparent 68px),
+      repeating-linear-gradient(150deg, rgba(79,184,214,0.035) 0px, rgba(79,184,214,0.035) 1px, transparent 1px, transparent 68px),
+      repeating-linear-gradient(90deg, rgba(125,122,209,0.02) 0px, rgba(125,122,209,0.02) 1px, transparent 1px, transparent 68px);
+    animation: driftGrid 44s linear infinite;
+  }
+  @keyframes driftGrid{ 0%{ transform:translate(0,0);} 100%{ transform:translate(68px,39px);} }
+  .glow-blob{ position:fixed; border-radius:50%; filter:blur(130px); z-index:0; pointer-events:none; opacity:0.22; }
+  .glow-blob.b1{ width:560px; height:560px; top:-180px; left:-140px; background:var(--cyan); animation:floatBlob 18s ease-in-out infinite; }
+  .glow-blob.b2{ width:480px; height:480px; bottom:-160px; right:-120px; background:var(--violet); animation:floatBlob 22s ease-in-out infinite reverse; }
+  .glow-blob.b3{ width:360px; height:360px; top:35%; left:58%; background:var(--amber); opacity:0.12; animation:floatBlob 26s ease-in-out infinite; }
+  @keyframes floatBlob{ 0%,100%{ transform:translate(0,0) scale(1);} 50%{ transform:translate(30px,-40px) scale(1.08);} }
+  .grain{
+    position:fixed; inset:0; z-index:2; pointer-events:none; opacity:0.035; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  .cursor-glow{
+    position:fixed; width:520px; height:520px; border-radius:50%; z-index:1; pointer-events:none;
+    background:radial-gradient(circle, rgba(79,184,214,0.10), rgba(125,122,209,0.04) 45%, transparent 70%);
+    transform:translate(-50%,-50%); transition:opacity .4s ease; opacity:0; left:0; top:0;
+  }
+
+  .wrap{ position:relative; z-index:3; max-width:1240px; margin:0 auto; padding:28px 24px 80px; }
+
+  /* ---------- Header ---------- */
+  header.topbar{ display:flex; align-items:center; justify-content:space-between; padding:6px 4px 10px; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand .mark{
+    width:42px; height:42px; border-radius:12px; position:relative;
+    background:linear-gradient(135deg, var(--cyan), var(--violet));
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-weight:700; font-size:15px; color:#03141c;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.15) inset, 0 8px 24px -8px var(--cyan-soft);
+  }
+  .brand .mark::after{
+    content:''; position:absolute; inset:-5px; border-radius:16px; border:1px solid rgba(79,184,214,0.35);
+    animation:orbitSpin 6s linear infinite;
+  }
+  @keyframes orbitSpin{ 0%{ transform:rotate(0deg) scale(1);} 50%{ transform:rotate(180deg) scale(1.06);} 100%{ transform:rotate(360deg) scale(1);} }
+  .brand h1{ font-size:19px; font-weight:700; letter-spacing:0.2px; }
+  .brand p{ font-size:11.5px; color:var(--text-dim); font-family:var(--mono); letter-spacing:0.4px; margin-top:2px; }
+  .status-pill{
+    display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:100px;
+    background:var(--panel); border:1px solid var(--border); font-family:var(--mono); font-size:11.5px; color:var(--text-dim);
+    backdrop-filter:blur(14px);
+  }
+  .status-dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 10px var(--green); animation:pulseDot 2s ease-in-out infinite; }
+  @keyframes pulseDot{ 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  /* ---------- Hero ---------- */
+  .hero{ position:relative; padding:56px 8px 70px; display:grid; grid-template-columns:1.05fr 0.95fr; gap:20px; align-items:center; }
+  @media (max-width:900px){ .hero{ grid-template-columns:1fr; padding:36px 4px 50px; } }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; letter-spacing:0.6px;
+    color:var(--cyan); background:rgba(79,184,214,0.08); border:1px solid rgba(79,184,214,0.25);
+    padding:6px 12px; border-radius:100px; margin-bottom:22px;
+  }
+  .eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+  .hero h1{
+    font-size:clamp(34px, 5vw, 54px); font-weight:700; line-height:1.08; letter-spacing:-1px; margin-bottom:20px;
+  }
+  .hero h1 .accent{
+    background:linear-gradient(120deg, var(--cyan), var(--violet) 60%, var(--amber));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    background-size:200% auto; animation:gradientShift 6s ease-in-out infinite;
+  }
+  @keyframes gradientShift{ 0%,100%{ background-position:0% 50%;} 50%{ background-position:100% 50%;} }
+  .hero .sub{ font-size:15.5px; color:var(--text-dim); max-width:480px; line-height:1.65; margin-bottom:30px; }
+  .hero-cta{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:38px; }
+  .stat-strip{ display:flex; gap:28px; flex-wrap:wrap; }
+  .stat-strip .stat b{ display:block; font-family:var(--mono); font-size:20px; color:var(--text); }
+  .stat-strip .stat span{ font-size:11px; color:var(--text-dimmer); font-family:var(--mono); text-transform:uppercase; letter-spacing:0.4px; }
+
+  .hero-art{ position:relative; height:380px; }
+  .hero-art svg{ width:100%; height:100%; }
+  .flow-dash{ stroke-dasharray:6 10; animation:flowDash 1.4s linear infinite; }
+  @keyframes flowDash{ to{ stroke-dashoffset:-32; } }
+  .pulse-node{ animation:nodePulse 2.2s ease-in-out infinite; transform-origin:center; }
+  @keyframes nodePulse{ 0%,100%{ opacity:0.55; r:4;} 50%{ opacity:1; r:6;} }
+
+  /* ---------- Glass card base ---------- */
+  .glass{
+    background:var(--panel); border:1px solid var(--border); border-radius:20px;
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    position:relative; transition:border-color .35s ease, box-shadow .35s ease, transform .12s ease;
+  }
+  .glass::before{
+    content:''; position:absolute; inset:0; border-radius:inherit; padding:1px;
+    background:linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 40%);
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .glass::after{
+    content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:0;
+    background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%), rgba(79,184,214,0.14), transparent 65%);
+    transition:opacity .35s ease;
+  }
+  .glass:hover::after{ opacity:1; }
+  .glass:hover{ border-color:var(--border-strong); box-shadow:0 0 0 1px rgba(79,184,214,0.12), 0 24px 60px -24px rgba(79,184,214,0.22); }
+
+  /* ---------- Stepper ---------- */
+  .kicker{ font-family:var(--mono); font-size:11px; letter-spacing:1.2px; color:var(--text-dimmer); text-transform:uppercase; margin:52px 4px 14px; display:flex; align-items:center; gap:10px; }
+  .kicker::after{ content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--border), transparent); }
+  .stepper{ display:flex; align-items:center; justify-content:space-between; margin-bottom:34px; padding:22px 26px; overflow-x:auto; }
+  @media (max-width:640px){ .stepper{ padding:18px 16px; } .step .label{ display:none; } .connector{ margin:0 4px; } }
+  .step{ display:flex; flex-direction:column; align-items:center; gap:8px; flex:0 0 auto; position:relative; }
+  .step .node{
+    width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-weight:700; font-size:13px;
+    background:rgba(255,255,255,0.03); border:1.5px solid var(--border); color:var(--text-dimmer);
+    transition:all .45s cubic-bezier(.4,0,.2,1);
+  }
+  .step .label{ font-size:11px; color:var(--text-dimmer); font-family:var(--mono); letter-spacing:0.3px; text-align:center; transition:color .35s ease; }
+  .step.active .node{ border-color:var(--cyan); color:var(--cyan); box-shadow:0 0 0 4px rgba(79,184,214,0.10), 0 0 16px var(--cyan-soft); animation:ringPulse 1.6s ease-in-out infinite; }
+  .step.active .label{ color:var(--cyan); }
+  .step.done .node{ background:linear-gradient(135deg, var(--cyan), var(--violet)); border-color:transparent; color:#04141c; box-shadow:0 0 14px var(--cyan-soft); }
+  .step.done .label{ color:var(--text); }
+  @keyframes ringPulse{ 0%,100%{ box-shadow:0 0 0 4px rgba(79,184,214,0.10), 0 0 14px var(--cyan-soft);} 50%{ box-shadow:0 0 0 8px rgba(79,184,214,0.05), 0 0 22px var(--cyan-soft);} }
+  .connector{ flex:1 1 auto; height:3px; margin:0 6px; border-radius:10px; align-self:center; margin-bottom:26px; background:rgba(255,255,255,0.08); position:relative; overflow:hidden; top:-18px; }
+  .connector .fill{ position:absolute; inset:0; width:0%; background:linear-gradient(90deg, var(--cyan), var(--violet)); transition:width .6s cubic-bezier(.4,0,.2,1); box-shadow:0 0 8px var(--cyan-soft); }
+  .connector.flowing .fill{ width:100%; background-size:200% 100%; animation:flowMove 1.4s linear infinite; }
+  @keyframes flowMove{ 0%{ background-position:200% 0;} 100%{ background-position:0% 0;} }
+
+  section.view{ display:none; }
+  section.view.active{ display:block; animation:fadeUp .5s ease both; }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:translateY(0);} }
+
+  /* ---------- Upload view ---------- */
+  .upload-card{ padding:48px 40px; text-align:center; }
+  .upload-card h2{ font-size:26px; font-weight:700; margin-bottom:8px; }
+  .upload-card .sub{ color:var(--text-dim); font-size:14px; margin-bottom:30px; }
+  .dropzone{ border:2px dashed var(--border); border-radius:18px; padding:46px 20px; cursor:pointer; transition:all .3s ease; position:relative; overflow:hidden; }
+  .dropzone:hover, .dropzone.dragover{ border-color:var(--cyan); background:rgba(79,184,214,0.05); box-shadow:0 0 0 1px rgba(79,184,214,0.18) inset, 0 0 40px -10px var(--cyan-soft); }
+  .dropzone .dz-icon{ width:64px; height:64px; margin:0 auto 18px; border-radius:16px; background:linear-gradient(135deg, rgba(79,184,214,0.16), rgba(125,122,209,0.16)); display:flex; align-items:center; justify-content:center; font-size:26px; border:1px solid var(--border); }
+  .dropzone h3{ font-size:16px; font-weight:600; margin-bottom:6px; }
+  .dropzone p{ font-size:12.5px; color:var(--text-dimmer); font-family:var(--mono); }
+  .dropzone input{ display:none; }
+  .upload-meta{ display:flex; justify-content:center; gap:22px; margin-top:22px; flex-wrap:wrap; }
+  .upload-meta span{ font-family:var(--mono); font-size:11px; color:var(--text-dimmer); }
+
+  .btn{
+    font-family:var(--disp); font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:12px; padding:13px 26px; color:#fff;
+    display:inline-flex; align-items:center; gap:8px; justify-content:center; position:relative; overflow:hidden;
+    transition:transform .25s ease, box-shadow .25s ease, opacity .25s ease;
+  }
+  .btn::before{ content:''; position:absolute; top:0; left:-60%; width:40%; height:100%; background:linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent); transform:skewX(-20deg); transition:left .6s ease; }
+  .btn:hover::before{ left:130%; }
+  .btn-primary{ background:linear-gradient(135deg, var(--cyan), var(--violet)); color:#04141c; box-shadow:0 10px 30px -10px var(--cyan-soft); }
+  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 14px 36px -8px var(--cyan-soft); }
+  .btn-ghost{ background:var(--panel-strong); border:1px solid var(--border); color:var(--text); }
+  .btn-ghost:hover{ border-color:var(--border-strong); transform:translateY(-2px); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; transform:none !important; }
+  .btn-row{ margin-top:26px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+  .error-banner{ margin-top:18px; padding:12px 16px; border-radius:12px; background:rgba(217,122,148,0.08); border:1px solid rgba(217,122,148,0.35); color:#f0b6c4; font-size:13px; font-family:var(--mono); display:none; text-align:left; align-items:center; gap:10px; }
+  .error-banner.show{ display:flex; }
+
+  /* ---------- Processing view ---------- */
+  .proc-grid{ display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:22px; }
+  @media (max-width:900px){ .proc-grid{ grid-template-columns:minmax(0,1fr); } }
+  .pipeline-card, .log-card{ padding:26px 26px 30px; min-width:0; }
+  .pipeline-card h3, .log-card h3{ font-size:14px; font-family:var(--mono); color:var(--text-dim); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:22px; }
+  .pipe-node-row{ display:flex; flex-direction:column; gap:0; }
+  .pipe-node{ display:flex; align-items:center; gap:16px; padding:14px 6px; position:relative; }
+  .pipe-node .dot{ width:38px; height:38px; border-radius:12px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:16px; background:rgba(255,255,255,0.03); border:1.5px solid var(--border); color:var(--text-dimmer); transition:all .4s ease; z-index:1; }
+  .pipe-node .info h4{ font-size:14px; font-weight:600; color:var(--text-dimmer); transition:color .35s ease; }
+  .pipe-node .info p{ font-size:11.5px; color:var(--text-dimmer); font-family:var(--mono); margin-top:2px; opacity:0.7; }
+  .pipe-node.active .dot{ border-color:var(--cyan); color:var(--cyan); box-shadow:0 0 16px var(--cyan-soft); background:rgba(79,184,214,0.08); }
+  .pipe-node.active .info h4{ color:var(--text); }
+  .pipe-node.done .dot{ background:linear-gradient(135deg,var(--cyan),var(--violet)); border-color:transparent; color:#04141c; }
+  .pipe-node.done .info h4{ color:var(--text-dim); }
+  .pipe-node:not(:last-child)::after{ content:''; position:absolute; left:24px; top:52px; width:2px; height:calc(100% - 10px); background:var(--border); }
+  .pipe-node.done:not(:last-child)::after{ background:linear-gradient(var(--cyan), var(--violet)); box-shadow:0 0 8px var(--cyan-soft); }
+  .log-terminal{ background:rgba(0,0,0,0.35); border-radius:14px; border:1px solid var(--border); padding:18px 18px; height:280px; overflow-y:auto; font-family:var(--mono); font-size:12.5px; line-height:1.9; color:#9db8d6; }
+  .log-terminal .l-line{ opacity:0; animation:logIn .35s ease forwards; white-space:pre-wrap; }
+  @keyframes logIn{ from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:translateY(0);} }
+  .log-terminal .tag-ok{ color:var(--green); }
+  .log-terminal .tag-info{ color:var(--cyan); }
+  .log-terminal .tag-warn{ color:var(--amber); }
+  .progress-outer{ margin-top:22px; height:8px; border-radius:10px; background:rgba(255,255,255,0.06); overflow:hidden; }
+  .progress-inner{ height:100%; width:0%; border-radius:10px; background:linear-gradient(90deg, var(--cyan), var(--violet)); background-size:200% 100%; box-shadow:0 0 8px var(--cyan-soft); transition:width .5s ease; animation:flowMove 2s linear infinite; }
+  .progress-label{ display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--text-dimmer); }
+
+  /* ---------- Results view ---------- */
+  .meta-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:20px; }
+  .meta-chip{ padding:14px 16px; min-width:0; }
+  .meta-chip .k{ font-family:var(--mono); font-size:10px; color:var(--text-dimmer); text-transform:uppercase; letter-spacing:0.5px; }
+  .meta-chip .v{ font-size:14px; font-weight:600; margin-top:5px; word-break:break-word; }
+  .summary-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:26px; }
+  .sum-chip{ padding:18px 14px; text-align:center; min-width:0; }
+  .sum-chip .num{ font-family:var(--mono); font-size:22px; font-weight:700; color:var(--cyan); }
+  .sum-chip .lbl{ font-size:10.5px; color:var(--text-dimmer); margin-top:6px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.4px; }
+
+  .main-grid{ display:grid; grid-template-columns:minmax(0,0.85fr) minmax(0,1.3fr); gap:22px; align-items:start; }
+  @media (max-width:1000px){ .main-grid{ grid-template-columns:minmax(0,1fr); } }
+
+  .preview-card{ padding:20px; min-width:0; }
+  .preview-card h3, .table-card h3{ font-size:13px; font-family:var(--mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .preview-frame{ border-radius:14px; overflow:hidden; border:1px solid var(--border); background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; min-height:320px; position:relative; }
+  .preview-frame img, .preview-frame svg{ width:100%; height:auto; display:block; }
+  .badge-mock{ font-family:var(--mono); font-size:10px; padding:3px 9px; border-radius:100px; background:rgba(224,164,88,0.12); color:var(--amber); border:1px solid rgba(224,164,88,0.3); }
+  .toggle-btn{ font-family:var(--mono); font-size:10.5px; padding:5px 11px; border-radius:100px; background:var(--panel-strong); border:1px solid var(--border); color:var(--text-dim); cursor:pointer; transition:all .25s ease; }
+  .toggle-btn:hover{ border-color:var(--cyan); color:var(--cyan); }
+  .toggle-btn.on{ background:rgba(79,184,214,0.12); border-color:var(--cyan); color:var(--cyan); }
+  .toggle-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .det-layer{ opacity:0; transition:opacity .4s ease; }
+  .det-layer.show{ opacity:1; }
+
+  .table-card{ padding:20px; min-width:0; }
+  .table-scroll{ max-height:420px; overflow:auto; border-radius:14px; border:1px solid var(--border); max-width:100%; }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; font-family:var(--mono); min-width:820px; }
+  thead th{ position:sticky; top:0; background:#0d1626; text-align:left; padding:12px 14px; color:var(--text-dim); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody td{ padding:11px 14px; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text); white-space:nowrap; }
+  tbody tr{ transition:background .2s ease; opacity:0; animation:rowIn .4s ease forwards; }
+  @keyframes rowIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+  tbody tr:hover{ background:rgba(79,184,214,0.06); }
+  .cat-pill{ padding:3px 9px; border-radius:100px; font-size:10px; font-weight:600; letter-spacing:0.3px; }
+  .cat-PIPE{ background:rgba(79,184,214,0.14); color:var(--cyan); }
+  .cat-FITTING{ background:rgba(125,122,209,0.16); color:var(--violet); }
+  .cat-FLANGE{ background:rgba(224,164,88,0.14); color:var(--amber); }
+  .cat-VALVE{ background:rgba(217,122,148,0.14); color:var(--red); }
+  .cat-GASKET{ background:rgba(79,203,150,0.14); color:var(--green); }
+  .cat-BOLT{ background:rgba(255,255,255,0.1); color:var(--text-dim); }
+  .conf-wrap{ display:flex; align-items:center; gap:7px; }
+  .conf-bar{ width:44px; height:5px; border-radius:10px; background:rgba(255,255,255,0.08); overflow:hidden; }
+  .conf-bar i{ display:block; height:100%; border-radius:10px; width:0%; transition:width 1s ease .2s; }
+
+  .actions-row{ margin-top:22px; display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap; }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed; bottom:26px; right:26px; z-index:50; padding:14px 20px; border-radius:14px;
+    display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:12.5px;
+    transform:translateY(120%); opacity:0; transition:all .5s cubic-bezier(.4,0,.2,1);
+  }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast .tick{ width:20px; height:20px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; color:#04241a; font-size:12px; flex:0 0 auto; }
+
+  footer{ text-align:center; margin-top:60px; color:var(--text-dimmer); font-family:var(--mono); font-size:11px; }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; } }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(79,184,214,0.25); border-radius:10px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="glow-blob b1"></div>
+<div class="glow-blob b2"></div>
+<div class="glow-blob b3"></div>
+<div class="grain"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">IM</div>
+      <div>
+        <h1>ISO ⟶ MTO</h1>
+        <p>Isometric Drawing → Automated Material Take-Off</p>
+      </div>
+    </div>
+    <div class="status-pill"><span class="status-dot"></span> Vision Pipeline · Demo Mode</div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div>
+      <div class="eyebrow"><span class="dot"></span> GEMINI 2.5 FLASH · VISION AI PIPELINE</div>
+      <h1>Every elbow, flange and<br>valve, <span class="accent">counted automatically.</span></h1>
+      <p class="sub">Upload one piping isometric. Watch the pipeline trace the route, read the title block, extract every fitting, and hand back a validated, exportable Material Take-Off — no manual counting required.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary" onclick="document.getElementById('app').scrollIntoView({behavior:'smooth'})">Start extracting ↓</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('app').scrollIntoView({behavior:'smooth'}); setTimeout(()=>document.getElementById('sampleBtn').click(), 500)">▶ Try live demo</button>
+      </div>
+      <div class="stat-strip">
+        <div class="stat"><b>9</b><span>Component families</span></div>
+        <div class="stat"><b>~15s</b><span>Avg. extraction time</span></div>
+        <div class="stat"><b>Schema</b><span>Validated output</span></div>
+      </div>
+    </div>
+    <div class="hero-art">
+      <svg viewBox="0 0 420 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="heroGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#4fb8d6"/>
+            <stop offset="1" stop-color="#7d7ad1"/>
+          </linearGradient>
+        </defs>
+        <polyline points="40,320 40,240 120,190 120,130 200,80 300,80 300,140 380,170" fill="none" stroke="url(#heroGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+        <polyline class="flow-dash" points="40,320 40,240 120,190 120,130 200,80 300,80 300,140 380,170" fill="none" stroke="#8fd6ec" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle class="pulse-node" cx="40" cy="320" r="5" fill="#4fb8d6"/>
+        <circle class="pulse-node" cx="120" cy="190" r="5" fill="#4fb8d6" style="animation-delay:.4s"/>
+        <circle class="pulse-node" cx="200" cy="80" r="5" fill="#7d7ad1" style="animation-delay:.8s"/>
+        <circle class="pulse-node" cx="300" cy="80" r="5" fill="#7d7ad1" style="animation-delay:1.2s"/>
+        <g transform="translate(300,140)" opacity="0.9">
+          <polygon points="-9,-7 -9,7 9,0" fill="#d97a94"/>
+          <polygon points="9,-7 9,7 -9,0" fill="#d97a94"/>
+        </g>
+        <text x="46" y="345" fill="#57657c" font-family="JetBrains Mono, monospace" font-size="10">6"-P-1501-A1A-IH</text>
+        <text x="330" y="200" fill="#57657c" font-family="JetBrains Mono, monospace" font-size="10">N ↑</text>
+      </svg>
+    </div>
+  </section>
+
+  <div class="kicker">THE PIPELINE</div>
+
+  <!-- STEPPER -->
+  <div class="glass stepper" id="stepper">
+    <div class="step done" data-step="1"><div class="node">01</div><div class="label">Upload</div></div>
+    <div class="connector" id="conn1"><div class="fill"></div></div>
+    <div class="step" data-step="2"><div class="node">02</div><div class="label">Preprocess</div></div>
+    <div class="connector" id="conn2"><div class="fill"></div></div>
+    <div class="step" data-step="3"><div class="node">03</div><div class="label">Vision AI</div></div>
+    <div class="connector" id="conn3"><div class="fill"></div></div>
+    <div class="step" data-step="4"><div class="node">04</div><div class="label">Validate</div></div>
+    <div class="connector" id="conn4"><div class="fill"></div></div>
+    <div class="step" data-step="5"><div class="node">05</div><div class="label">MTO Ready</div></div>
+  </div>
+
+  <div id="app">
+  <!-- UPLOAD VIEW -->
+  <section class="view active" id="view-upload">
+    <div class="glass upload-card">
+      <h2>Upload an isometric drawing</h2>
+      <p class="sub">PNG, JPG or PDF · one drawing per run · max 20&nbsp;MB</p>
+
+      <div class="dropzone" id="dropzone">
+        <div class="dz-icon">📐</div>
+        <h3>Drag & drop your drawing here</h3>
+        <p>or click to browse files</p>
+        <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf">
+      </div>
+
+      <div class="error-banner" id="errorBanner">⚠ <span id="errorText"></span></div>
+
+      <div class="upload-meta">
+        <span>ACCEPTED: PNG · JPG · PDF</span>
+        <span>MAX SIZE: 20MB</span>
+        <span>SCOPE: 1 ISOMETRIC / RUN</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="sampleBtn">▶ Try a sample isometric</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESSING VIEW -->
+  <section class="view" id="view-processing">
+    <div class="proc-grid">
+      <div class="glass pipeline-card">
+        <h3>Pipeline</h3>
+        <div class="pipe-node-row" id="pipeNodes">
+          <div class="pipe-node" data-n="1"><div class="dot">↥</div><div class="info"><h4>Normalize input</h4><p>render / resize / enhance</p></div></div>
+          <div class="pipe-node" data-n="2"><div class="dot">◈</div><div class="info"><h4>Vision AI extraction</h4><p>gemini-2.5-flash · structured JSON</p></div></div>
+          <div class="pipe-node" data-n="3"><div class="dot">✓</div><div class="info"><h4>Schema validation</h4><p>pydantic · unit normalization</p></div></div>
+          <div class="pipe-node" data-n="4"><div class="dot">Σ</div><div class="info"><h4>Derive & total</h4><p>gaskets · bolt sets · summary</p></div></div>
+        </div>
+        <div class="progress-outer"><div class="progress-inner" id="progressBar"></div></div>
+        <div class="progress-label"><span id="progressStatus">Starting…</span><span id="progressPct">0%</span></div>
+      </div>
+
+      <div class="glass log-card">
+        <h3>Live log</h3>
+        <div class="log-terminal" id="logTerminal"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS VIEW -->
+  <section class="view" id="view-results">
+    <div class="meta-row" id="metaRow"></div>
+    <div class="summary-row" id="summaryRow"></div>
+
+    <div class="main-grid">
+      <div class="glass preview-card">
+        <h3>Source drawing <span style="display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="detToggle">◎ Show AI detections</button><span class="badge-mock">DEMO INPUT</span></span></h3>
+        <div class="preview-frame" id="previewFrame"></div>
+      </div>
+
+      <div class="glass table-card">
+        <h3>Material Take-Off <span class="badge-mock" id="mockBadge">MOCK PIPELINE</span></h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Category</th><th>Description</th><th>Size</th><th>Sched/Class</th>
+                <th>Material</th><th>End</th><th>Qty</th><th>Unit</th><th>Length (m)</th><th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody id="mtoBody"></tbody>
+          </table>
+        </div>
+        <div class="actions-row">
+          <button class="btn btn-ghost" id="resetBtn">↺ Upload another drawing</button>
+          <button class="btn btn-ghost" id="excelBtn" title="Bonus feature — coming soon">⇩ Export Excel</button>
+          <button class="btn btn-primary" id="csvBtn">⇩ Export CSV</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <footer>ISO ⟶ MTO · full-stack AI assessment prototype · frontend flow demo, running on a simulated Gemini Vision pipeline</footer>
+</div>
+
+<div class="toast glass" id="toast"><span class="tick">✓</span><span id="toastText">MTO generated</span></div>
+
+<script>
+(function(){
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const errorBanner = document.getElementById('errorBanner');
+  const errorText = document.getElementById('errorText');
+  const sampleBtn = document.getElementById('sampleBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const csvBtn = document.getElementById('csvBtn');
+  const excelBtn = document.getElementById('excelBtn');
+  const detToggle = document.getElementById('detToggle');
+  const toast = document.getElementById('toast');
+  const toastText = document.getElementById('toastText');
+  const cursorGlow = document.getElementById('cursorGlow');
+
+  const views = { upload: document.getElementById('view-upload'), processing: document.getElementById('view-processing'), results: document.getElementById('view-results') };
+  const steppers = document.querySelectorAll('#stepper .step');
+  const connectors = document.querySelectorAll('#stepper .connector');
+
+  let uploadedImageURL = null;
+  let usingSample = false;
+
+  // ---------- Ambient cursor glow + card spotlight ----------
+  document.addEventListener('mousemove', (e) => {
+    cursorGlow.style.opacity = '1';
+    cursorGlow.style.left = e.clientX + 'px';
+    cursorGlow.style.top = e.clientY + 'px';
+  });
+  document.addEventListener('mouseleave', () => { cursorGlow.style.opacity = '0'; });
+
+  document.addEventListener('mousemove', (e) => {
+    document.querySelectorAll('.glass').forEach(card => {
+      const r = card.getBoundingClientRect();
+      if(e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom){
+        const mx = ((e.clientX - r.left) / r.width) * 100;
+        const my = ((e.clientY - r.top) / r.height) * 100;
+        card.style.setProperty('--mx', mx + '%');
+        card.style.setProperty('--my', my + '%');
+      }
+    });
+  });
+
+  const SAMPLE_SVG = `
+  <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" style="background:#0b1424">
+    <defs>
+      <linearGradient id="pipeGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#4fb8d6"/>
+        <stop offset="1" stop-color="#7d7ad1"/>
+      </linearGradient>
+    </defs>
+    <text x="18" y="26" fill="#8593a8" font-family="JetBrains Mono, monospace" font-size="10">DWG NO: ISO-1501-01   REV: 2</text>
+    <text x="18" y="40" fill="#8593a8" font-family="JetBrains Mono, monospace" font-size="10">LINE: 6"-P-1501-A1A-IH</text>
+    <polyline points="60,300 60,220 140,170 140,110 220,60 320,60 320,120 400,150" fill="none" stroke="url(#pipeGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="60" cy="300" r="5" fill="#4fb8d6"/>
+    <circle cx="140" cy="170" r="5" fill="#4fb8d6"/>
+    <circle cx="220" cy="60" r="5" fill="#4fb8d6"/>
+    <circle cx="320" cy="60" r="5" fill="#4fb8d6"/>
+    <g transform="translate(320,120)">
+      <polygon points="-10,-8 -10,8 10,0" fill="#d97a94" opacity="0.9"/>
+      <polygon points="10,-8 10,8 -10,0" fill="#d97a94" opacity="0.9"/>
+    </g>
+    <line x1="392" y1="142" x2="392" y2="158" stroke="#e0a458" stroke-width="4"/>
+    <text x="70" y="315" fill="#57657c" font-family="JetBrains Mono, monospace" font-size="9">EL. +100000</text>
+    <text x="150" y="200" fill="#57657c" font-family="JetBrains Mono, monospace" font-size="9">3800</text>
+    <text x="225" y="52" fill="#57657c" font-family="JetBrains Mono, monospace" font-size="9">FW</text>
+    <text x="330" y="200" fill="#57657c" font-family="JetBrains Mono, monospace" font-size="9">N ↑</text>
+    <g class="det-layer" id="detLayer">
+      <rect x="30" y="270" width="60" height="46" rx="6" fill="none" stroke="#4fb8d6" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="34" y="264" fill="#4fb8d6" font-family="JetBrains Mono, monospace" font-size="8">PIPE 94%</text>
+      <rect x="110" y="145" width="60" height="50" rx="6" fill="none" stroke="#7d7ad1" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="112" y="140" fill="#7d7ad1" font-family="JetBrains Mono, monospace" font-size="8">ELBOW 90%</text>
+      <rect x="192" y="34" width="56" height="50" rx="6" fill="none" stroke="#7d7ad1" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="194" y="28" fill="#7d7ad1" font-family="JetBrains Mono, monospace" font-size="8">TEE 81%</text>
+      <rect x="296" y="94" width="56" height="52" rx="6" fill="none" stroke="#d97a94" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="298" y="152" fill="#d97a94" font-family="JetBrains Mono, monospace" font-size="8">VALVE 85%</text>
+      <rect x="370" y="130" width="28" height="34" rx="6" fill="none" stroke="#e0a458" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="366" y="176" fill="#e0a458" font-family="JetBrains Mono, monospace" font-size="8">FLANGE 88%</text>
+    </g>
+  </svg>`;
+
+  // ---------- Upload interactions ----------
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault(); dropzone.classList.remove('dragover');
+    if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
+
+  sampleBtn.addEventListener('click', () => {
+    usingSample = true; uploadedImageURL = null;
+    hideError();
+    startPipeline();
+  });
+
+  function showError(msg){ errorText.textContent = msg; errorBanner.classList.add('show'); }
+  function hideError(){ errorBanner.classList.remove('show'); }
+
+  function handleFile(file){
+    hideError();
+    const okTypes = ['image/png','image/jpeg','application/pdf'];
+    if(!okTypes.includes(file.type)){ showError('Unsupported file type. Please upload a PNG, JPG or PDF.'); return; }
+    if(file.size > 20*1024*1024){ showError('File exceeds the 20MB limit. Please upload a smaller drawing.'); return; }
+    usingSample = false;
+    if(file.type === 'application/pdf'){ uploadedImageURL = null; }
+    else { uploadedImageURL = URL.createObjectURL(file); }
+    startPipeline();
+  }
+
+  // ---------- Stepper control ----------
+  function setStepper(activeIndex, doneUpTo){
+    steppers.forEach(s => {
+      const n = parseInt(s.dataset.step);
+      s.classList.remove('active','done');
+      if(n < activeIndex) s.classList.add('done');
+      else if(n === activeIndex) s.classList.add('active');
+    });
+    connectors.forEach((c, i) => {
+      c.classList.remove('flowing');
+      if(i < doneUpTo) { c.querySelector('.fill').style.width = '100%'; }
+      else if(i === doneUpTo) { c.classList.add('flowing'); }
+      else { c.querySelector('.fill').style.width = '0%'; }
+    });
+  }
+
+  function showView(name){
+    Object.values(views).forEach(v => v.classList.remove('active'));
+    views[name].classList.add('active');
+  }
+
+  // ---------- Pipeline simulation ----------
+  const logTerminal = document.getElementById('logTerminal');
+  const progressBar = document.getElementById('progressBar');
+  const progressPct = document.getElementById('progressPct');
+  const progressStatus = document.getElementById('progressStatus');
+  const pipeNodes = document.querySelectorAll('#pipeNodes .pipe-node');
+
+  const LOG_SCRIPT = [
+    ['info', '[upload] receiving file · validating content-type & size'],
+    ['ok',   '[upload] file accepted -> job_id: 8f2c1a'],
+    ['info', '[preprocess] rendering page 1 -> PNG @ 300dpi'],
+    ['info', '[preprocess] normalizing contrast, deskewing isometric grid'],
+    ['ok',   '[preprocess] image ready for extraction (2480x1748)'],
+    ['info', '[vision] calling gemini-2.5-flash with structured JSON schema'],
+    ['info', '[vision] parsing title block: drawing no. / line no. / revision'],
+    ['info', '[vision] tracing pipe route + detecting symbols (elbow, tee, flange, valve)'],
+    ['ok',   '[vision] extraction complete -> 9 items detected'],
+    ['info', '[validate] checking response against Pydantic MTO schema'],
+    ['info', '[validate] normalizing units -> NPS in inches, length in metres'],
+    ['warn', '[validate] no explicit gasket/bolt rows found - deriving from flanged joints'],
+    ['ok',   '[validate] schema valid - 0 errors'],
+    ['info', '[derive] computing summary totals (length, counts, field welds)'],
+    ['ok',   '[derive] MTO ready - 11 rows, 4 categories'],
+  ];
+
+  function appendLog(tag, text){
+    const line = document.createElement('div');
+    line.className = 'l-line';
+    const cls = tag === 'ok' ? 'tag-ok' : tag === 'warn' ? 'tag-warn' : 'tag-info';
+    line.innerHTML = `<span class="${cls}">${tag === 'ok' ? 'OK' : tag === 'warn' ? '!!' : '..'}</span> ${text}`;
+    logTerminal.appendChild(line);
+    logTerminal.scrollTop = logTerminal.scrollHeight;
+  }
+
+  function startPipeline(){
+    showView('processing');
+    logTerminal.innerHTML = '';
+    pipeNodes.forEach(n => n.classList.remove('active','done'));
+    progressBar.style.width = '0%';
+    progressPct.textContent = '0%';
+    setStepper(2, 0);
+
+    let i = 0;
+    const total = LOG_SCRIPT.length;
+    const stageBounds = [ [0,5,1], [5,9,2], [9,13,3], [13,15,4] ];
+
+    function tick(){
+      if(i >= total){
+        setStepper(5, 4);
+        progressStatus.textContent = 'Complete';
+        setTimeout(buildResults, 550);
+        return;
+      }
+      const [tag, text] = LOG_SCRIPT[i];
+      appendLog(tag, text);
+
+      stageBounds.forEach(([s,e,n]) => {
+        const el = document.querySelector(`.pipe-node[data-n="${n}"]`);
+        if(i === s) el.classList.add('active');
+        if(i === e-1) { el.classList.remove('active'); el.classList.add('done'); }
+      });
+
+      if(i === 0) setStepper(2, 0);
+      if(i === 5) setStepper(3, 1);
+      if(i === 9) setStepper(4, 2);
+      if(i === 13) setStepper(5, 3);
+
+      const pct = Math.round(((i+1)/total)*100);
+      progressBar.style.width = pct + '%';
+      progressPct.textContent = pct + '%';
+      progressStatus.textContent = tag === 'warn' ? 'Working - minor fallback applied' : 'Processing…';
+
+      i++;
+      setTimeout(tick, 320 + Math.random()*240);
+    }
+    tick();
+  }
+
+  // ---------- Mock MTO data ----------
+  const MTO_ITEMS = [
+    { item_no:1, category:'PIPE', description:'Pipe, Seamless, BE, ASME B36.10', size_nps:'6"', schedule_rating:'SCH 40', material_spec:'ASTM A106 Gr.B', end_type:'BW', quantity:1, unit:'M', length_m:12.45, confidence:0.94, remarks:'' },
+    { item_no:2, category:'FITTING', description:'Elbow 90° LR, BW, ASME B16.9', size_nps:'6"', schedule_rating:'SCH 40', material_spec:'ASTM A234 WPB', end_type:'BW', quantity:3, unit:'EA', length_m:null, confidence:0.9, remarks:'' },
+    { item_no:3, category:'FITTING', description:'Tee, Equal, BW, ASME B16.9', size_nps:'6"', schedule_rating:'SCH 40', material_spec:'ASTM A234 WPB', end_type:'BW', quantity:1, unit:'EA', length_m:null, confidence:0.81, remarks:'' },
+    { item_no:4, category:'FITTING', description:'Reducer, Concentric, BW, ASME B16.9', size_nps:'6"x4"', schedule_rating:'SCH 40', material_spec:'ASTM A234 WPB', end_type:'BW', quantity:1, unit:'EA', length_m:null, confidence:0.77, remarks:'' },
+    { item_no:5, category:'FLANGE', description:'Flange, Weld-Neck, RF, ASME B16.5', size_nps:'6"', schedule_rating:'CL150', material_spec:'ASTM A105', end_type:'BW', quantity:2, unit:'EA', length_m:null, confidence:0.88, remarks:'' },
+    { item_no:6, category:'VALVE', description:'Gate Valve, Flanged, RF', size_nps:'6"', schedule_rating:'CL150', material_spec:'ASTM A216 WCB', end_type:'FLGD', quantity:1, unit:'EA', length_m:null, confidence:0.85, remarks:'' },
+    { item_no:7, category:'GASKET', description:'Gasket, Spiral Wound, SS316/Graphite, ASME B16.20', size_nps:'6"', schedule_rating:'CL150', material_spec:'SS316/Graphite', end_type:'FLGD', quantity:2, unit:'EA', length_m:null, confidence:0.72, remarks:'derived from flanged joints' },
+    { item_no:8, category:'BOLT', description:'Stud Bolt w/ 2 Nuts, ASTM A193 B7 / A194 2H', size_nps:'3/4"', schedule_rating:'CL150', material_spec:'A193 B7 / A194 2H', end_type:'-', quantity:2, unit:'SET', length_m:null, confidence:0.7, remarks:'derived from flanged joints' },
+    { item_no:9, category:'FITTING', description:'Cap, BW, ASME B16.9', size_nps:'4"', schedule_rating:'SCH 40', material_spec:'ASTM A234 WPB', end_type:'BW', quantity:1, unit:'EA', length_m:null, confidence:0.68, remarks:'' },
+  ];
+
+  const META = { drawing_no:'ISO-1501-01', revision:'2', line_number:'6"-P-1501-A1A-IH', nps:'6"', material_class:'A1A', service:'Process' };
+  const SUMMARY = [
+    { label:'Total pipe length', value: 12.45, suffix:' m' },
+    { label:'Fittings', value: 5, suffix:'' },
+    { label:'Flanges', value: 2, suffix:'' },
+    { label:'Valves', value: 1, suffix:'' },
+    { label:'Gaskets', value: 2, suffix:'' },
+    { label:'Bolt sets', value: 2, suffix:'' },
+    { label:'Field welds', value: 1, suffix:'' },
+  ];
+
+  function confColor(c){ if(c >= 0.85) return 'var(--green)'; if(c >= 0.7) return 'var(--amber)'; return 'var(--red)'; }
+
+  function countUp(el, target, suffix, decimals){
+    const dur = 900; const start = performance.now();
+    function frame(now){
+      const p = Math.min((now-start)/dur, 1);
+      const eased = 1 - Math.pow(1-p, 3);
+      const val = target * eased;
+      el.textContent = (decimals ? val.toFixed(2) : Math.round(val)) + suffix;
+      if(p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function showToast(msg){
+    toastText.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4200);
+  }
+
+  function buildResults(){
+    const metaRow = document.getElementById('metaRow');
+    metaRow.innerHTML = '';
+    Object.entries({ 'Drawing No.':META.drawing_no, 'Revision':META.revision, 'Line Number':META.line_number, 'NPS':META.nps, 'Material Class':META.material_class, 'Service':META.service })
+      .forEach(([k,v]) => { metaRow.insertAdjacentHTML('beforeend', `<div class="glass meta-chip"><div class="k">${k}</div><div class="v">${v}</div></div>`); });
+
+    const summaryRow = document.getElementById('summaryRow');
+    summaryRow.innerHTML = '';
+    SUMMARY.forEach(s => {
+      summaryRow.insertAdjacentHTML('beforeend', `<div class="glass sum-chip"><div class="num" data-target="${s.value}" data-suffix="${s.suffix}">0</div><div class="lbl">${s.label}</div></div>`);
+    });
+    document.querySelectorAll('.sum-chip .num').forEach(el => {
+      const target = parseFloat(el.dataset.target);
+      const suffix = el.dataset.suffix;
+      countUp(el, target, suffix, target % 1 !== 0);
+    });
+
+    const previewFrame = document.getElementById('previewFrame');
+    previewFrame.innerHTML = '';
+    if(uploadedImageURL){
+      previewFrame.innerHTML = `<img src="${uploadedImageURL}" alt="Uploaded isometric drawing">`;
+      detToggle.disabled = true; detToggle.title = 'Detection overlay available with the sample drawing';
+    } else {
+      previewFrame.innerHTML = SAMPLE_SVG;
+      detToggle.disabled = false; detToggle.title = '';
+      detToggle.classList.remove('on'); detToggle.textContent = '◎ Show AI detections';
+    }
+
+    const tbody = document.getElementById('mtoBody');
+    tbody.innerHTML = '';
+    MTO_ITEMS.forEach((it, idx) => {
+      const confPct = Math.round(it.confidence*100);
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr style="animation-delay:${idx*45}ms">
+          <td>${it.item_no}</td>
+          <td><span class="cat-pill cat-${it.category}">${it.category}</span></td>
+          <td>${it.description}</td>
+          <td>${it.size_nps}</td>
+          <td>${it.schedule_rating}</td>
+          <td>${it.material_spec}</td>
+          <td>${it.end_type}</td>
+          <td>${it.quantity}</td>
+          <td>${it.unit}</td>
+          <td>${it.length_m ?? '—'}</td>
+          <td><div class="conf-wrap"><div class="conf-bar"><i data-w="${confPct}" style="background:${confColor(it.confidence)};"></i></div><span style="color:${confColor(it.confidence)}">${confPct}%</span></div></td>
+        </tr>
+      `);
+    });
+    setTimeout(() => { document.querySelectorAll('.conf-bar i').forEach(i => { i.style.width = i.dataset.w + '%'; }); }, 200);
+
+    showView('results');
+    showToast(`MTO generated - ${MTO_ITEMS.length} items extracted`);
+  }
+
+  detToggle.addEventListener('click', () => {
+    const layer = document.getElementById('detLayer');
+    if(!layer) return;
+    const isOn = detToggle.classList.toggle('on');
+    layer.classList.toggle('show', isOn);
+    detToggle.textContent = isOn ? '◎ Hide AI detections' : '◎ Show AI detections';
+  });
+
+  // ---------- Export ----------
+  function toCSV(){
+    const headers = ['item_no','category','description','size_nps','schedule_rating','material_spec','end_type','quantity','unit','length_m','confidence','remarks'];
+    const rows = MTO_ITEMS.map(it => headers.map(h => {
+      let val = it[h] ?? '';
+      val = String(val).replace(/"/g,'""');
+      return /[,"\n]/.test(val) ? `"${val}"` : val;
+    }).join(','));
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  csvBtn.addEventListener('click', () => {
+    const blob = new Blob([toCSV()], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `MTO_${META.drawing_no}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded');
+  });
+
+  excelBtn.addEventListener('click', () => {
+    excelBtn.textContent = '⏳ Coming soon';
+    setTimeout(() => excelBtn.innerHTML = '⇩ Export Excel', 1400);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    uploadedImageURL = null; usingSample = false;
+    fileInput.value = '';
+    hideError();
+    setStepper(1, -1);
+    showView('upload');
+  });
+
+})();
+</script>
+</body>
+</html>
