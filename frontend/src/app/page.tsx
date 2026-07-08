@@ -4,27 +4,27 @@ import React, { useEffect, useRef, useState } from 'react';
 
 // Interfaces for our MTO
 interface DrawingMeta {
-  drawing_no: str;
-  revision: str;
-  line_number: str;
-  nps: str;
-  material_class: str;
-  service: str;
+  drawing_no: string;
+  revision: string;
+  line_number: string;
+  nps: string;
+  material_class: string;
+  service: string;
 }
 
 interface MTOItem {
-  item_no: int;
-  category: str;
-  description: str;
-  size_nps: str;
-  schedule_rating: str;
-  material_spec: str;
-  end_type: str;
-  quantity: int;
-  unit: str;
+  item_no: number;
+  category: string;
+  description: string;
+  size_nps: string;
+  schedule_rating: string;
+  material_spec: string;
+  end_type: string;
+  quantity: number;
+  unit: string;
   length_m: number | null;
   confidence: number;
-  remarks: str;
+  remarks: string;
 }
 
 interface MTOSummary {
